@@ -26,6 +26,22 @@ namespace dwyl.GetMgpExpectationCore
                     .ToKeyValuePairs();
         }
 
+        public static KeyValuePair<string, (double Mean, double Median, (ushort value, double probability) Worst)>[] CalculateV2(string numbers)
+        {
+            var chars = numbers.AsSpan();
+
+            if (numbers.Length != 9)
+            {
+                throw new ArgumentException();
+            }
+
+            var (intArrayFromInput, hiddenNumbers, hiddenNumbersPositions) = ParseInputForUnsafe(chars);
+
+            return GetPermutationEnumerable(hiddenNumbers)
+                .Select(x => GetValidArrayUsingUnsafeClass(intArrayFromInput, x, hiddenNumbersPositions).CalculateFromBytes())
+                .ToArray()
+                .ToKeyValuePairsV2();
+        }
         private static (byte[], byte[] hiddenNumbers, byte[] hiddenNumbersPositions) ParseInputForUnsafe(ReadOnlySpan<char> span)
         {
             var oneToNine = new byte[] { 1, 2, 3, 4, 5, 6, 7, 8, 9 };
@@ -260,6 +276,26 @@ namespace dwyl.GetMgpExpectationCore
             return (d.Mean(), d.Median());
         }
 
+        public static KeyValuePair<string, (double mean, double median, (ushort, double))>[] ToKeyValuePairsV2(this (ushort topRow, ushort middleRow, ushort bottomRow, ushort leftColumn, ushort middleColumn, ushort rightColumn, ushort downwardSloping, ushort upwardSloping)[] resultsOfCalculations)
+        {
+            return new[]
+            {
+                new KeyValuePair<string, (double, double, (ushort, double))>("Top Row", resultsOfCalculations.Select(x => x.topRow).ToArray().ToMeanMedianAndWorst()),
+                new KeyValuePair<string, (double, double, (ushort, double))>("Middle Row", resultsOfCalculations.Select(x => x.middleRow).ToArray().ToMeanMedianAndWorst()),
+                new KeyValuePair<string, (double, double, (ushort, double))>("BottomRow", resultsOfCalculations.Select(x => x.bottomRow).ToArray().ToMeanMedianAndWorst()),
+                new KeyValuePair<string, (double, double, (ushort, double))>("Left Column", resultsOfCalculations.Select(x => x.leftColumn).ToArray().ToMeanMedianAndWorst()),
+                new KeyValuePair<string, (double, double, (ushort, double))>("Middle Column", resultsOfCalculations.Select(x => x.middleColumn).ToArray().ToMeanMedianAndWorst()),
+                new KeyValuePair<string, (double, double, (ushort, double))>("Right Column", resultsOfCalculations.Select(x => x.rightColumn).ToArray().ToMeanMedianAndWorst()),
+                new KeyValuePair<string, (double, double, (ushort, double))>("Downward Sloping", resultsOfCalculations.Select(x => x.downwardSloping).ToArray().ToMeanMedianAndWorst()),
+                new KeyValuePair<string, (double, double, (ushort, double))>("Upward Sloping", resultsOfCalculations.Select(x => x.upwardSloping).ToArray().ToMeanMedianAndWorst())
+            };
+        }
+        public static (double mean, double median, (ushort value, double probability) worst) ToMeanMedianAndWorst(this ushort[] x)
+        {
+            var min = x.Min();
+            var d = x.Select(y => (double)y).ToArray();
+            return (d.Mean(), d.Median(), (min, Math.Round(x.Count(z => z == min) / 1.2, 2)));
+        }
     }
 
 }
